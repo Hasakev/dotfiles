@@ -1,0 +1,6 @@
+# Overrides /usr/share/dbus-1/services/org.knopwob.dunst.service: Quickshell is the
+# notification daemon now, so D-Bus must never auto-start dunst and steal the name.
+# Delete this file to re-enable dunst activation.
+[D-BUS Service]
+Name=org.freedesktop.Notifications
+Exec=/bin/false

@@ -1,0 +1,7 @@
+# machine state / backups
+hypr/.config/hypr/wallpaper-engine.map
+hypr/.config/hypr/wallpapers/
+hypr/.config/hypr/*.pre-*
+hypr/.config/hypr/hyprland.conf
+**/.claude/
+hypr/.config/hypr/scripts/view*.sh
