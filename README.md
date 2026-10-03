@@ -10,13 +10,17 @@ islands, accent pulled from the wallpaper, media panel tinted by the album art.
 | `kitty`      | Terminal                                                    |
 | `waypaper`   | Wallpaper picker (drives Wallpaper Engine via `hypr/scripts`) |
 | `dbus`       | Stops dunst grabbing the notification name from Quickshell   |
+| `theme`      | Palette + `sync.sh`: GTK, Kvantum, qt5ct/qt6ct in the same colours |
 
 ## Install
 
 ```sh
-sudo pacman -S --needed stow quickshell cava hyprland hyprlock kitty jq imagemagick
+sudo pacman -S --needed stow quickshell cava hyprland hyprlock kitty jq imagemagick \
+  kvantum qt5ct qt6ct
+paru -S catppuccin-gtk-theme-mocha   # AUR; sync.sh recolours it
 git clone git@github.com:Hasakev/dotfiles.git ~/dotfiles
-cd ~/dotfiles && stow quickshell hypr kitty waypaper dbus
+cd ~/dotfiles && stow quickshell hypr kitty waypaper dbus theme
+~/.config/theme/sync.sh   # builds the chongqing GTK/Kvantum/Qt themes
 ```
 
 `packages.txt` is the full explicit package list (`pacman -Qqe`); refresh it with
