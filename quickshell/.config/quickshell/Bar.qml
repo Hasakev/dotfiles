@@ -3,6 +3,7 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import Quickshell.Bluetooth
 import Quickshell.Services.Pipewire
 import Quickshell.Services.SystemTray
 import Quickshell.Widgets
@@ -230,16 +231,21 @@ PanelWindow {
                 text: Net.ssid || "offline"
                 color: Net.ssid ? Theme.subtext1 : Theme.alert
             }
+        }
+
+        // Left: Bluetooth settings (blueman). Right: adapter power.
+        Pill {
+            id: btPill
+            readonly property var dev: Icons.btConnected()
+            visible: !!Bluetooth.defaultAdapter
+            onClicked: b => b === Qt.RightButton ? Bluetooth.defaultAdapter.enabled = !Icons.btOn() : Quickshell.execDetached(["blueman-manager"])
             Icon {
-                readonly property var dev: Icons.btConnected()
-                visible: !!dev
-                text: "󰂱"
-                color: netPill.active ? Theme.accent : Theme.overlay2
+                text: !Icons.btOn() ? "󰂲" : btPill.dev ? "󰂱" : "󰂯"
+                color: btPill.dev || btPill.hovered ? Theme.accent : Icons.btOn() ? Theme.overlay2 : Theme.overlay0
             }
             Label {
-                readonly property var dev: Icons.btConnected()
-                visible: !!dev && netPill.hovered
-                text: dev ? dev.name + (dev.batteryAvailable ? ` · ${Math.round(dev.battery * 100)}%` : "") : ""
+                visible: !!btPill.dev && btPill.hovered
+                text: btPill.dev ? btPill.dev.name + (btPill.dev.batteryAvailable ? ` · ${Math.round(btPill.dev.battery * 100)}%` : "") : ""
                 color: Theme.subtext1
             }
         }
