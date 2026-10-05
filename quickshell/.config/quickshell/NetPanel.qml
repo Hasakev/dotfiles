@@ -12,15 +12,21 @@ Item {
         .filter(d => d.paired || d.connected)
         .sort((a, b) => b.connected - a.connected || a.name.localeCompare(b.name))
 
-    implicitWidth: 320
+    implicitWidth: 380
     implicitHeight: col.implicitHeight
 
     // Network awaiting a password, and the last failure message.
     property var askFor: null
     property string error: ""
 
-    Component.onCompleted: Net.setScanning(true)
-    Component.onDestruction: Net.setScanning(false)
+    Component.onCompleted: { Net.setScanning(true); Net.detailed = true }
+    Component.onDestruction: { Net.setScanning(false); Net.detailed = false }
+
+    function dbmColor(d) { return d >= -60 ? Theme.good : d >= -70 ? Theme.amber : Theme.alert }
+    function pingColor() { return Net.ping >= 80 || Net.loss >= 5 ? Theme.alert : Net.ping >= 30 || Net.jitter >= 20 ? Theme.amber : Theme.accent }
+    readonly property string internet: !Networking.canCheckConnectivity ? "" : ({
+        [NetworkConnectivity.Full]: "online", [NetworkConnectivity.Limited]: "no internet",
+        [NetworkConnectivity.Portal]: "login portal", [NetworkConnectivity.None]: "offline" })[Networking.connectivity] ?? "checking…"
 
     function pick(n) {
         error = ""
@@ -114,6 +120,22 @@ Item {
         MouseArea { id: hov; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: e.clicked() }
     }
 
+    // One "key  value" line in the connection card.
+    component KV: Item {
+        property string k
+        property string v
+        property color vColor: Theme.subtext1
+        width: parent.width
+        height: 16
+        visible: v !== ""
+        Label { text: parent.k; color: Theme.overlay1; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter }
+        Label {
+            x: 64; width: parent.width - 64; elide: Text.ElideRight
+            anchors.verticalCenter: parent.verticalCenter
+            text: parent.v; color: parent.vColor; font.pixelSize: 11
+        }
+    }
+
     Column {
         id: col
         width: parent.width
@@ -125,6 +147,53 @@ Item {
             busy: Net.scanning
             onToggled: Net.setRadio(!Net.radio)
             onRefresh: Net.setScanning(!Net.scanning)
+        }
+
+        Card {
+            width: parent.width
+            visible: Net.radio && !!Net.ssid
+            title: "CONNECTION"
+            value: Net.link.dbm ? Net.link.dbm + " dBm" : ""
+            accent: root.dbmColor(Net.link.dbm)
+            sub: Net.link.freq ? `${Net.iface} · ${Net.band(Net.link.freq)} · ch ${Net.link.chan} · ${Math.round(Net.link.freq)} MHz` : Net.iface
+            KV { k: "link"; v: Net.link.rx ? `↓ ${Net.link.rx} · ↑ ${Net.link.tx} Mbit/s` : "" }
+            KV {
+                k: "channel"
+                v: !Net.link.chan ? "" : Net.link.shared ? `shared with ${Net.link.shared} other network${Net.link.shared > 1 ? "s" : ""}` : "clear"
+                vColor: Net.link.shared ? Theme.amber : Theme.good
+            }
+            KV { k: "security"; v: Net.active ? WifiSecurityType.toString(Net.active.security) : "" }
+            KV { k: "address"; v: Net.link.ip ?? "" }
+            KV { k: "gateway"; v: Net.link.gw ?? "" }
+            KV { k: "dns"; v: Net.link.dns ?? "" }
+            KV { k: "internet"; v: root.internet; vColor: root.internet === "online" ? Theme.good : Theme.amber }
+        }
+
+        Row {
+            width: parent.width
+            spacing: 8
+            visible: Net.radio && !!Net.ssid
+            Card {
+                width: (parent.width - 8) / 2
+                title: "TRAFFIC"
+                value: "↓ " + Net.rate(Net.downHist[Net.downHist.length - 1] ?? 0)
+                sub: "↑ " + Net.rate(Net.upHist[Net.upHist.length - 1] ?? 0)
+                // Down and up share one scale so their heights compare.
+                Item {
+                    readonly property real max: Math.max(10240, ...Net.downHist, ...Net.upHist)
+                    width: parent.width; height: 36
+                    Spark { anchors.fill: parent; values: Net.downHist; max: parent.max; accent: Theme.accent }
+                    Spark { anchors.fill: parent; values: Net.upHist; max: parent.max; accent: Theme.subtext1 }
+                }
+            }
+            Card {
+                width: (parent.width - 8) / 2
+                title: "LATENCY"
+                value: Net.pingHist.length ? Math.round(Net.ping) + " ms" : "…"
+                sub: `jitter ${Math.round(Net.jitter)} ms · ${Net.loss}% loss`
+                accent: root.pingColor()
+                Spark { width: parent.width; height: 36; values: Net.pingHist; max: Math.max(20, ...Net.pingHist); accent: root.pingColor() }
+            }
         }
         Repeater {
             model: Net.radio ? Net.networks.slice(0, 7) : []
@@ -140,6 +209,7 @@ Item {
                     label: netRow.modelData.name
                     busy: netRow.modelData.stateChanging
                     detail: (Net.secure(netRow.modelData) ? "󰌾 " : "")
+                        + (Net.aps[netRow.modelData.name] ? Net.bandInfo(netRow.modelData.name) + " · " : "")
                         + (netRow.modelData.stateChanging ? "…" : netRow.modelData.connected ? "connected"
                            : Math.round(netRow.modelData.signalStrength * 100) + "%")
                     cur: netRow.modelData.connected

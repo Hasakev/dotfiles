@@ -23,7 +23,8 @@ PanelWindow {
     // Hyprland recomposites and re-blurs the whole surface on every redraw.
     readonly property bool expanded: panel !== "" || shrinkDelay.running
     implicitHeight: expanded ? 760 : Theme.gap + Theme.barHeight + 4
-    Timer { id: shrinkDelay; interval: 350 }
+    // Unload the panel once it has animated out, so its onDestruction stops pollers (Sys/Net detailed, scanner).
+    Timer { id: shrinkDelay; interval: 350; onTriggered: if (bar.panel === "") bar.shown = "" }
     onPanelChanged: if (panel === "") shrinkDelay.restart()
     exclusiveZone: Theme.barHeight + Theme.gap
     color: "transparent"
@@ -42,7 +43,7 @@ PanelWindow {
 
     // ── Popout state ────────────────────────────────────────────────────────
     property string panel: ""          // open panel name, "" = closed
-    property string shown: ""          // last panel, kept while it animates out
+    property string shown: ""          // last panel, kept while it animates out, then cleared
     property real anchorX: 0
     property real anchorW: 0
 

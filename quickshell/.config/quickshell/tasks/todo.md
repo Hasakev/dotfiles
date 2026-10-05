@@ -110,3 +110,29 @@ Not verified by real input: notification action buttons/swipe, power tiles, wind
       synced lyrics from lrclib.net (only fetched while panel open, cached per song)
 - [x] Player.artColor (cover's prominent hue via shared Accent.vivid) tints panel + bar visualizer
 - [x] Verified live with Spotify: cover colour, spectrum, lyrics in sync, log clean
+
+# Phase 8 — detailed Wi-Fi breakdown (net panel)
+
+All of it polled only while the net panel is open (`Net.detailed`, same pattern as `Sys.detailed`).
+Quickshell.Networking has no band/channel/rate/IP, so: `nmcli` (AP list, IP/gw/DNS), `iw` (dBm, bitrate),
+/sys byte counters (throughput), one long-running `ping` to the gateway (latency).
+
+- [x] Net.qml: `detailed` flag; `link` {iface, freq, chan, dbm, rxRate, txRate, ip, gw, dns};
+      `aps` ssid -> [{chan, freq, signal}] from `nmcli dev wifi list ifname <dev> --rescan no` every 5s
+- [x] Net.qml: throughput from /sys/class/net/<if>/statistics rx/tx_bytes every 1s -> downHist/upHist
+- [x] Net.qml: `ping -i 1 <gw>` Process + SplitParser -> pingHist, avg, jitter (restarts if gw changes)
+- [x] Extract SysPanel's Card component to Card.qml (reused by NetPanel; SysPanel unchanged)
+- [x] NetPanel: connected card at top: SSID, band/channel (+ "N other networks on ch X"), dBm,
+      rx/tx link rate, security, IP/gw/DNS, internet state (Networking.connectivity)
+- [x] NetPanel: throughput card (down/up Spark) + latency card (Spark, avg + jitter, amber/red when bad)
+- [x] NetPanel rows: band + channel per SSID ("2.4G ch11 · 66%"; multi-band SSIDs show both)
+- [x] Panel width 320 -> 380 so row details don't elide
+- [x] Verify: qs log clean, screenshot of open panel, values match `iw`/`nmcli`/`ping` in a terminal;
+      idle CPU unchanged with panel closed (no Processes running)
+- [x] Root cause found while verifying: Bar never cleared `shown`, so a closed panel stayed loaded and
+      its onDestruction never ran -> Sys's top/nvidia-smi, the wifi scanner (and the new ping) kept running
+      after close. Now `shown` clears when shrinkDelay ends (popout fade is 260ms < 350ms).
+
+Review: verified live (screenshots): values match `iw`/`nmcli`; ping + top start on open and are gone
+1s after close; qs log clean. Panel's own scanning does NOT cause the latency spikes (106ms avg closed vs
+32ms open) — wlan1 has power_save on, likely culprit.
